@@ -1,0 +1,156 @@
+// Register page — simple registration form
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import Button from '../../components/ui/Button';
+
+export default function Register() {
+  const navigate = useNavigate();
+  const [role, setRole] = useState('farmer');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [location, setLocation] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    // In real app: POST /api/auth/register
+    setSubmitted(true);
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center px-4 text-center">
+        <div className="text-6xl mb-4">✅</div>
+        <h2 className="text-2xl font-bold text-green-700 mb-2">रजिस्ट्रेशन सफल!</h2>
+        <p className="text-gray-600 mb-2">Registration Successful!</p>
+        <p className="text-sm text-gray-500 mb-6 max-w-xs">
+          अभी Demo Account से लॉगिन करें। असली खाता जल्द उपलब्ध होगा।
+        </p>
+        <Button variant="primary" size="lg" onClick={() => navigate('/login')}>
+          लॉगिन करें
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center px-4 py-8">
+      <div className="text-center mb-6">
+        <div className="text-5xl mb-2">🌾</div>
+        <h1 className="text-2xl font-bold text-green-700">KisanSetu</h1>
+        <p className="text-gray-500 text-sm">नया खाता बनाएँ / Create Account</p>
+      </div>
+
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] p-6">
+        {/* Role selection */}
+        <div className="mb-5">
+          <p className="text-sm font-medium text-gray-700 mb-2">आप कौन हैं? / I am a:</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setRole('farmer')}
+              className={[
+                'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors cursor-pointer',
+                role === 'farmer'
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-gray-200 text-gray-500 hover:border-green-300',
+              ].join(' ')}
+            >
+              <span className="text-3xl">👨‍🌾</span>
+              <span className="text-sm font-semibold">किसान / Farmer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('buyer')}
+              className={[
+                'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors cursor-pointer',
+                role === 'buyer'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 text-gray-500 hover:border-blue-300',
+              ].join(' ')}
+            >
+              <span className="text-3xl">👨‍💼</span>
+              <span className="text-sm font-semibold">खरीदार / Buyer</span>
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">पूरा नाम / Full Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="Ramesh Kumar"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">मोबाइल नंबर / Mobile</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              placeholder="+91 98765 43210"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ईमेल / Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@email.com"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">स्थान / Location</label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              required
+              placeholder="जिला, राज्य / District, State"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">पासवर्ड / Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={4}
+              placeholder="••••••"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base"
+            />
+          </div>
+
+          <Button type="submit" variant="primary" size="lg" fullWidth>
+            रजिस्टर करें / Register
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 mt-5">
+          पहले से खाता है?{' '}
+          <Link to="/login" className="text-green-600 font-semibold hover:underline">
+            लॉगिन करें
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
