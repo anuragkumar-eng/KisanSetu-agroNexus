@@ -1587,11 +1587,104 @@ Get a single grievance by ID with full detail and response history.
 
 ---
 
+### Config
+
+Static configuration endpoints. These are **public** (no authentication required) and change rarely. Responses should be cached by the client for the duration of the session.
+
+---
+
+#### `GET /api/config/crops`
+
+Get the master list of supported crop types.
+
+**Auth required:** No  
+**Role required:** None
+
+**Success Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "value":   "wheat",
+      "label":   "Wheat",
+      "labelHi": "गेहूँ",
+      "emoji":   "🌾"
+    },
+    {
+      "value":   "rice",
+      "label":   "Rice",
+      "labelHi": "धान",
+      "emoji":   "🍚"
+    }
+  ]
+}
+```
+
+> Replaces the hardcoded `cropTypes` array in `src/data/mockLots.js`.  
+> The `useCropTypes()` hook reads from this endpoint; falls back to mock data on failure.
+
+---
+
+#### `GET /api/config/quality-grades`
+
+Get the quality grade option list used in lot creation and filtering.
+
+**Auth required:** No  
+**Role required:** None
+
+**Success Response `200`:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "value":          "premium",
+      "label":          "Premium",
+      "labelHi":        "प्रीमियम",
+      "description":    "Highest quality, fully cleaned",
+      "descriptionHi":  "सर्वोच्च गुणवत्ता, पूरी तरह साफ"
+    },
+    {
+      "value":          "grade_a",
+      "label":          "Grade A",
+      "labelHi":        "ग्रेड A",
+      "description":    "Good quality, minor impurities",
+      "descriptionHi":  "अच्छी गुणवत्ता, थोड़ी अशुद्धि"
+    },
+    {
+      "value":          "faq",
+      "label":          "FAQ",
+      "labelHi":        "सामान्य",
+      "description":    "Fair Average Quality — standard mandi grade",
+      "descriptionHi":  "मंडी मानक गुणवत्ता"
+    },
+    {
+      "value":          "local",
+      "label":          "Local",
+      "labelHi":        "स्थानीय",
+      "description":    "Lower grade, suitable for local sale",
+      "descriptionHi":  "कम ग्रेड, स्थानीय बिक्री के लिए"
+    }
+  ]
+}
+```
+
+> Replaces the hardcoded `qualityGrades` array in `src/data/mockLots.js`.  
+> The `useQualityGrades()` hook reads from this endpoint; falls back to mock data on failure.
+
+**Error Responses:** These endpoints return `500` only on a catastrophic server failure. They should never return `401` or `403`.
+
+---
+
 ### AI Services
 
 AI endpoints proxy to the Python AI service. The Node.js backend calls Python internally and returns the result to the frontend. **The browser never calls Python directly.**
 
 ---
+
 
 #### `POST /api/ai/predict-price`
 

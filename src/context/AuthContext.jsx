@@ -1,44 +1,79 @@
-import { createContext, useContext, useState } from 'react';
+/**
+ * AuthContext — authentication state for KisanSetu
+ *
+ * Mock mode  (VITE_USE_MOCK=true):
+ *   login() validates against DEMO_ACCOUNTS and returns the user object.
+ *   No network call is made. Token is set to a static placeholder string.
+ *
+ * Real mode  (VITE_USE_MOCK=false):
+ *   login() calls POST /api/auth/login.
+ *   JWT from the response is stored in localStorage under 'kisansetu_token'.
+ *   api.js reads this token automatically on every subsequent request.
+ *
+ * In both modes login() is async and returns:
+ *   - the user object on success  (callers use returnedUser.role for redirect)
+ *   - false on failure
+ *
+ * SECURITY RULE: Never infer role from the email address string.
+ * Always read role from the returned user object.
+ */
 
-// Demo accounts — replace with real API auth later
+import { createContext, useContext, useState } from 'react';
+import { api, ApiError } from '../services/api';
+
+// ─── Demo accounts (mock mode only) ──────────────────────────────────────────
+
 const DEMO_ACCOUNTS = {
   'farmer@demo.com': {
-    id: 'f1',
-    email: 'farmer@demo.com',
-    password: '1234',
-    name: 'Ramesh Kumar',
-    nameHi: 'रमेश कुमार',
-    role: 'farmer',
-    location: 'Karnal, Haryana',
-    phone: '+91 98765 11111',
-    crops: ['Wheat', 'Rice', 'Mustard'],
-    cropsHi: ['गेहूँ', 'धान', 'सरसों'],
-    avatar: '👨‍🌾',
-    memberSince: '2024',
-    bankLinked: true,
+    id:             'f1',
+    email:          'farmer@demo.com',
+    password:       '1234',
+    name:           'Ramesh Kumar',
+    nameHi:         'रमेश कुमार',
+    role:           'farmer',
+    location:       'Karnal, Haryana',
+    state:          'Haryana',
+    district:       'Karnal',
+    phone:          '+91 98765 11111',
+    crops:          ['Wheat', 'Rice', 'Mustard'],
+    cropsHi:        ['गेहूँ', 'धान', 'सरसों'],
+    avatar:         '👨‍🌾',
+    memberSince:    '2024',
+    bankLinked:     true,
     aadhaarVerified: true,
   },
   'buyer@demo.com': {
-    id: 'b1',
-    email: 'buyer@demo.com',
-    password: '1234',
-    name: 'Ramesh Agarwal',
-    nameHi: 'रमेश अग्रवाल',
-    role: 'buyer',
-    company: 'Agarwal Traders Pvt. Ltd.',
-    location: 'Delhi',
-    phone: '+91 98765 43210',
-    avatar: '👨‍💼',
+    id:          'b1',
+    email:       'buyer@demo.com',
+    password:    '1234',
+    name:        'Ramesh Agarwal',
+    nameHi:      'रमेश अग्रवाल',
+    role:        'buyer',
+    company:     'Agarwal Traders Pvt. Ltd.',
+    location:    'Delhi',
+    state:       'Delhi',
+    district:    'New Delhi',
+    phone:       '+91 98765 43210',
+    avatar:      '👨‍💼',
     memberSince: '2021',
-    gstLinked: true,
-    verified: true,
+    gstLinked:   true,
+    verified:    true,
   },
 };
+
+/**
+ * Whether to use mock auth.
+ * Defaults to true when VITE_USE_MOCK is unset (safe for development).
+ */
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // Try loading persisted user from localStorage
+
+  // ── Persisted user ──────────────────────────────────────────────────────────
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('kisansetu_user');
@@ -48,9 +83,20 @@ export function AuthProvider({ children }) {
     }
   });
 
+  // ── JWT token — read by api.js from localStorage directly ──────────────────
+  // We also keep it in React state so consumers can react to login/logout.
+  // Note: api.js reads localStorage.getItem('kisansetu_token') independently —
+  //       it does NOT need the React token state to be passed via props.
+  const [token, setToken] = useState(() =>
+    localStorage.getItem('kisansetu_token') ?? null
+  );
+
+  // ── Auth error message (shown on login form) ────────────────────────────────
   const [error, setError] = useState('');
 
-  // Notification read state — persisted to localStorage within session
+  // ── Notification read-state (mock mode only) ────────────────────────────────
+  // In real mode, read state is persisted in MongoDB and returned by
+  // GET /api/notifications. The Set below is only used when USE_MOCK=true.
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
       const saved = localStorage.getItem('kisansetu_read_notifs');
@@ -60,34 +106,80 @@ export function AuthProvider({ children }) {
     }
   });
 
-  // Login — returns the user object on success, false on failure.
-  // Callers must use returnedUser.role for redirect — never infer from email.
-  function login(email, password) {
+  // ── login() ─────────────────────────────────────────────────────────────────
+  /**
+   * Authenticate the user.
+   * Always async — works with await in both mock and real mode.
+   *
+   * @param {string} email
+   * @param {string} password
+   * @returns {Object|false} User object on success, false on failure.
+   */
+  async function login(email, password) {
     setError('');
-    const account = DEMO_ACCOUNTS[email.toLowerCase()];
-    if (!account) {
-      setError('Email नहीं मिला। / Email not found.');
+
+    // ── Mock path ──────────────────────────────────────────────────────────────
+    if (USE_MOCK) {
+      const account = DEMO_ACCOUNTS[email.toLowerCase()];
+      if (!account) {
+        setError('Email नहीं मिला। / Email not found.');
+        return false;
+      }
+      if (account.password !== password) {
+        setError('गलत पासवर्ड। / Wrong password.');
+        return false;
+      }
+      const { password: _p, ...safeUser } = account;
+
+      // Store user (no real JWT in mock mode — use a placeholder token)
+      const mockToken = `mock_token_${safeUser.role}_${Date.now()}`;
+      setUser(safeUser);
+      setToken(mockToken);
+      localStorage.setItem('kisansetu_user',  JSON.stringify(safeUser));
+      localStorage.setItem('kisansetu_token', mockToken);
+      return safeUser;
+    }
+
+    // ── Real API path ──────────────────────────────────────────────────────────
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { user: apiUser, token: jwt } = res.data;
+
+      setUser(apiUser);
+      setToken(jwt);
+      localStorage.setItem('kisansetu_user',  JSON.stringify(apiUser));
+      localStorage.setItem('kisansetu_token', jwt);
+      return apiUser;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.isUnauthorized) {
+          setError('गलत Email या पासवर्ड। / Invalid email or password.');
+        } else if (err.isForbidden) {
+          setError('खाता निलंबित है। / Account is suspended.');
+        } else if (err.isNetworkError) {
+          setError('नेटवर्क से कनेक्ट नहीं हो सका। / Network error.');
+        } else {
+          setError(err.message || 'लॉगिन विफल। / Login failed.');
+        }
+      } else {
+        setError('लॉगिन विफल। / Login failed.');
+      }
       return false;
     }
-    if (account.password !== password) {
-      setError('गलत पासवर्ड। / Wrong password.');
-      return false;
-    }
-    const { password: _p, ...safeUser } = account;
-    setUser(safeUser);
-    localStorage.setItem('kisansetu_user', JSON.stringify(safeUser));
-    return safeUser; // return user object so caller reads .role directly
   }
 
+  // ── logout() ────────────────────────────────────────────────────────────────
   function logout() {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('kisansetu_user');
-    // Clear read-notification cache on logout so next session starts fresh
+    localStorage.removeItem('kisansetu_token');
+    // Clear notification read cache so next login starts fresh
     setReadNotifIds(new Set());
     localStorage.removeItem('kisansetu_read_notifs');
   }
 
-  // Mark a single notification as read (by id)
+  // ── markNotifRead() — mock mode notification read state ─────────────────────
   function markNotifRead(id) {
     setReadNotifIds((prev) => {
       if (prev.has(id)) return prev; // already read — skip re-render
@@ -100,16 +192,26 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, error, setError, readNotifIds, markNotifRead }}
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        error,
+        setError,
+        readNotifIds,
+        markNotifRead,
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook for consuming auth context
+// ─── useAuth ──────────────────────────────────────────────────────────────────
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
   return ctx;
 }

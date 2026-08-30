@@ -11,11 +11,11 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
-    // login() returns the user object on success, false on failure
-    const loggedInUser = login(email.trim(), password);
+    // login() is async — works for both mock demo login and real API login
+    const loggedInUser = await login(email.trim(), password);
     setLoading(false);
     if (loggedInUser) {
       // Use the actual role from the authenticated user — never infer from email
