@@ -39,8 +39,9 @@ export function useMandi(params = {}) {
     setLoading(true);
     setError(null);
     try {
-      const qs = new URLSearchParams(params).toString();
-      const res = await api.get(`/mandi${qs ? `?${qs}` : ''}`);
+      const apiParams = { limit: 500, ...params };
+      const qs = new URLSearchParams(apiParams).toString();
+      const res = await api.get(`/mandi?${qs}`);
       setData(res.data);
     } catch (err) {
       setError(err);
