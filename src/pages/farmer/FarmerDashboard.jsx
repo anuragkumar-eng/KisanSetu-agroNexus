@@ -4,11 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
-import PriceCard from '../../components/farmer/PriceCard';
+import CropGroupCard from '../../components/farmer/CropGroupCard';
 import LotCard from '../../components/farmer/LotCard';
 import { useAuth } from '../../context/AuthContext';
-import { mandiPrices, priceRecommendations } from '../../data/mockMandi';
-import { lots } from '../../data/mockLots';
+import { useMyLots } from '../../hooks/useLots';
+import { useMandi } from '../../hooks/useMandi';
+import { priceRecommendations } from '../../data/mockMandi'; // Kept for AI advice placeholder
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 function RecommendationCard({ cropKey }) {
   const rec = priceRecommendations[cropKey];
@@ -25,9 +28,9 @@ function RecommendationCard({ cropKey }) {
       ].join(' ')}
     >
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-2xl">{isSell ? '✅' : '⏳'}</span>
+        <span className="text-2xl">{isSell ? '📈' : '📉'}</span>
         <p className={`font-bold text-lg ${isSell ? 'text-green-700' : 'text-yellow-700'}`}>
-          {isSell ? 'अभी बेचें!' : 'थोड़ा इंतज़ार करें'}
+          {isSell ? 'अभी बेचें!' : 'कुछ दिन रुकें'}
         </p>
       </div>
       <p className="text-xs text-gray-600 mt-1">{rec.reasonHi}</p>
@@ -39,9 +42,32 @@ function RecommendationCard({ cropKey }) {
 export default function FarmerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const myLots = lots.filter(l => l.farmerId === 'f1' && l.status === 'active');
-  const topPrices = mandiPrices.slice(0, 4);
+  
+  const { lots: myAllLots, loading: lotsLoading, error: lotsError } = useMyLots();
+  const { prices: mandiPrices, loading: mandiLoading, error: mandiError } = useMandi();
+
+  const myLots = (myAllLots || []).filter(l => l.status === 'active');
   const myCrop = user?.crops?.[0]?.toLowerCase() || 'wheat';
+
+  const grouped = (mandiPrices || []).reduce((acc, item) => {
+    const key = item.cropName.toLowerCase();
+    if (!acc[key]) {
+      acc[key] = {
+        cropName: item.cropName,
+        cropNameHi: item.cropNameHi || item.cropName,
+        cropEmoji: item.cropEmoji || '🌾',
+        markets: [],
+      };
+    }
+    acc[key].markets.push(item);
+    return acc;
+  }, {});
+  
+  const groupedArray = Object.values(grouped).sort((a, b) => a.cropName.localeCompare(b.cropName));
+  const topCrops = groupedArray.slice(0, 4);
+
+  if (lotsLoading || mandiLoading) return <LoadingState />;
+  if (lotsError || mandiError) return <ErrorState message={lotsError?.message || mandiError?.message} />;
 
   return (
     <Layout>
@@ -108,12 +134,11 @@ export default function FarmerDashboard() {
               सभी देखें →
             </button>
           </div>
-          <div className="space-y-2">
-            {topPrices.map((item) => (
-              <PriceCard
-                key={item.id}
-                item={item}
-                onClick={() => navigate(`/farmer/trend/${item.cropName.toLowerCase()}`)}
+          <div className="space-y-3">
+            {topCrops.map((group) => (
+              <CropGroupCard
+                key={group.cropName}
+                group={group}
               />
             ))}
           </div>

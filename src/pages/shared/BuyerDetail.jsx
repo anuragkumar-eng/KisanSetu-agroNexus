@@ -4,7 +4,9 @@ import Layout from '../../components/layout/Layout';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
-import { buyers } from '../../data/mockBuyers';
+import { useBuyerDetail } from '../../hooks/useBuyers';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 function StarRating({ rating }) {
   const full = Math.floor(rating);
@@ -24,7 +26,11 @@ function StarRating({ rating }) {
 export default function BuyerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const buyer = buyers.find((b) => b.id === id);
+  
+  const { data: buyer, loading, error } = useBuyerDetail(id);
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
 
   if (!buyer) {
     return (

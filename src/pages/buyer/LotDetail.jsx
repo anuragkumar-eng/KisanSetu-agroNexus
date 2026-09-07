@@ -6,20 +6,34 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { lots } from '../../data/mockLots';
-import { mandiPrices } from '../../data/mockMandi';
+import { useLots } from '../../hooks/useLots';
+import { useMandi } from '../../hooks/useMandi';
 import { formatRupees } from '../../utils/helpers';
+import { api } from '../../services/api';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
 export default function LotDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const lot = lots.find((l) => l.id === id);
-
+  
   const [showOfferForm, setShowOfferForm] = useState(false);
   const [offerPrice, setOfferPrice] = useState('');
   const [offerQty, setOfferQty] = useState('');
   const [offerMsg, setOfferMsg] = useState('');
   const [offerSent, setOfferSent] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const { lots: allLots, loading: lotsLoading, error: lotsError } = useLots();
+  const { prices: mandiPrices, loading: mandiLoading } = useMandi();
+
+  if (lotsLoading || mandiLoading) return <LoadingState />;
+  if (lotsError) return <ErrorState message={lotsError.message} />;
+
+  const lot = (allLots || []).find((l) => (l._id === id || l.id === id));
 
   if (!lot) {
     return (
@@ -41,11 +55,27 @@ export default function LotDetail() {
   const priceDiff = mandiRef ? lot.askingPrice - mandiRef.price : null;
   const totalValue = lot.quantity * lot.askingPrice;
 
-  function handleSubmitOffer(e) {
+  async function handleSubmitOffer(e) {
     e.preventDefault();
-    // In real app: POST /api/offers
-    setOfferSent(true);
-    setShowOfferForm(false);
+    setSubmitError(null);
+    setSubmitting(true);
+    
+    try {
+      if (!USE_MOCK) {
+        await api.post('/offers', {
+          lotId: lot._id || lot.id,
+          offerPrice: Number(offerPrice),
+          quantity: Number(offerQty),
+          message: offerMsg
+        });
+      }
+      setOfferSent(true);
+      setShowOfferForm(false);
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to send offer');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -204,7 +234,14 @@ export default function LotDetail() {
                   )}
                   <div className="flex gap-2">
                     <Button variant="outline" size="md" fullWidth onClick={() => setShowOfferForm(false)}>रद्द करें</Button>
-                    <Button type="submit" variant="primary" size="md" fullWidth>ऑफर भेजें</Button>
+                    {submitError && (
+                      <div className="text-red-500 text-sm mt-1 mb-2">
+                        {submitError}
+                      </div>
+                    )}
+                    <Button type="submit" variant="primary" size="lg" fullWidth disabled={submitting}>
+                      {submitting ? 'भेज रहा है...' : 'प्रस्ताव भेजें / Submit Offer'}
+                    </Button>
                   </div>
                 </form>
               </Card>

@@ -15,6 +15,7 @@ import MyLots from './pages/farmer/MyLots';
 import FarmerOffers from './pages/farmer/FarmerOffers';
 import FarmerProfile from './pages/farmer/FarmerProfile';
 import StoragePage from './pages/farmer/StoragePage';
+import NetRealisation from './pages/farmer/NetRealisation';
 
 // Buyer pages
 import BuyerDashboard from './pages/buyer/BuyerDashboard';
@@ -45,8 +46,10 @@ function RequireAuth({ children }) {
 function RequireRole({ role, children }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== role) {
-    return <Navigate to={user.role === 'farmer' ? '/farmer' : '/buyer'} replace />;
+  
+  const userRole = (user.role || '').toLowerCase();
+  if (userRole !== role.toLowerCase()) {
+    return <Navigate to={userRole === 'farmer' ? '/farmer' : '/buyer'} replace />;
   }
   return children;
 }
@@ -55,7 +58,8 @@ function RequireRole({ role, children }) {
 function RedirectIfAuth({ children }) {
   const { user } = useAuth();
   if (user) {
-    return <Navigate to={user.role === 'farmer' ? '/farmer' : '/buyer'} replace />;
+    const userRole = (user.role || '').toLowerCase();
+    return <Navigate to={userRole === 'farmer' ? '/farmer' : '/buyer'} replace />;
   }
   return children;
 }
@@ -63,11 +67,20 @@ function RedirectIfAuth({ children }) {
 // ─────────────────────────────────────────
 // Route tree
 // ─────────────────────────────────────────
+function RootRedirect() {
+  const { user } = useAuth();
+  if (user) {
+    const userRole = (user.role || '').toLowerCase();
+    return <Navigate to={userRole === 'farmer' ? '/farmer' : '/buyer'} replace />;
+  }
+  return <Navigate to="/login" replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
       {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<RootRedirect />} />
 
       {/* Auth */}
       <Route path="/login"    element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
@@ -82,6 +95,7 @@ function AppRoutes() {
       <Route path="/farmer/offers"       element={<RequireRole role="farmer"><FarmerOffers /></RequireRole>} />
       <Route path="/farmer/profile"      element={<RequireRole role="farmer"><FarmerProfile /></RequireRole>} />
       <Route path="/farmer/storage"      element={<RequireRole role="farmer"><StoragePage /></RequireRole>} />
+      <Route path="/farmer/net-realisation/:lotId" element={<RequireRole role="farmer"><NetRealisation /></RequireRole>} />
 
       {/* ── Buyer routes ── */}
       <Route path="/buyer"               element={<RequireRole role="buyer"><BuyerDashboard /></RequireRole>} />

@@ -18,7 +18,7 @@
  * Always read role from the returned user object.
  */
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { api, ApiError } from '../services/api';
 
 // ─── Demo accounts (mock mode only) ──────────────────────────────────────────
@@ -31,9 +31,9 @@ const DEMO_ACCOUNTS = {
     name:           'Ramesh Kumar',
     nameHi:         'रमेश कुमार',
     role:           'farmer',
-    location:       'Karnal, Haryana',
-    state:          'Haryana',
-    district:       'Karnal',
+    location:       'Kanpur, Uttar Pradesh',
+    state:          'Uttar Pradesh',
+    district:       'Kanpur',
     phone:          '+91 98765 11111',
     crops:          ['Wheat', 'Rice', 'Mustard'],
     cropsHi:        ['गेहूँ', 'धान', 'सरसों'],
@@ -77,7 +77,10 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('kisansetu_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Clean up bad nested data from previous sessions
+      return parsed.user ? parsed.user : parsed;
     } catch {
       return null;
     }
@@ -94,7 +97,7 @@ export function AuthProvider({ children }) {
   // ── Auth error message (shown on login form) ────────────────────────────────
   const [error, setError] = useState('');
 
-  // ── Notification read-state (mock mode only) ────────────────────────────────
+  // ─── Notification read-state (mock mode only) ──────────────────────────────
   // In real mode, read state is persisted in MongoDB and returned by
   // GET /api/notifications. The Set below is only used when USE_MOCK=true.
   const [readNotifIds, setReadNotifIds] = useState(() => {
@@ -106,7 +109,28 @@ export function AuthProvider({ children }) {
     }
   });
 
-  // ── login() ─────────────────────────────────────────────────────────────────
+  // ─── Restore user from backend on mount ────────────────────────────────────
+  useEffect(() => {
+    if (!USE_MOCK && token) {
+      api.get('/auth/me')
+        .then(res => {
+          // Unify the data shape regardless of nesting level
+          const payload = res.data || res;
+          const freshUser = payload.user || payload;
+          
+          setUser(freshUser);
+          localStorage.setItem('kisansetu_user', JSON.stringify(freshUser));
+        })
+        .catch(err => {
+          // If token is invalid/expired, log them out
+          if (err instanceof ApiError && err.status === 401) {
+            logout();
+          }
+        });
+    }
+  }, [token]);
+
+  // ─── login() ─────────────────────────────────────────────────────────────────
   /**
    * Authenticate the user.
    * Always async — works with await in both mock and real mode.
@@ -143,7 +167,11 @@ export function AuthProvider({ children }) {
     // ── Real API path ──────────────────────────────────────────────────────────
     try {
       const res = await api.post('/auth/login', { email, password });
-      const { user: apiUser, token: jwt } = res.data;
+      
+      // Robustly handle data shape variations
+      const payload = res.data || res;
+      const apiUser = payload.user || payload;
+      const jwt = payload.token;
 
       setUser(apiUser);
       setToken(jwt);

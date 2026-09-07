@@ -4,10 +4,16 @@ import Layout from '../../components/layout/Layout';
 import OfferCard from '../../components/farmer/OfferCard';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/ui/Button';
-import { buyerOffers } from '../../data/mockOffers';
+import { useOffers } from '../../hooks/useOffers';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 export default function BuyerOffers() {
   const navigate = useNavigate();
+  const { offers: buyerOffers, loading, error } = useOffers();
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
 
   return (
     <Layout title="मेरे ऑफर / My Offers" showBack>

@@ -5,20 +5,26 @@ import Layout from '../../components/layout/Layout';
 import LotCard from '../../components/farmer/LotCard';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/ui/Button';
-import { lots } from '../../data/mockLots';
+import { useMyLots } from '../../hooks/useLots';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 const STATUS_TABS = [
   { key: 'all',    label: 'सभी' },
   { key: 'active', label: '✅ सक्रिय' },
-  { key: 'sold',   label: '🤝 बिक गए' },
+  { key: 'sold',   label: '🤝 बिक गया' },
 ];
 
 export default function MyLots() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
 
-  const myLots = lots.filter((l) => l.farmerId === 'f1');
-  const filtered = activeTab === 'all' ? myLots : myLots.filter((l) => l.status === activeTab);
+  const { lots: myLots, loading, error } = useMyLots();
+  
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
+
+  const filtered = activeTab === 'all' ? (myLots || []) : (myLots || []).filter((l) => l.status === activeTab);
 
   return (
     <Layout title="मेरी फसल / My Crops" showBack>
@@ -79,13 +85,26 @@ export default function MyLots() {
             }
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {filtered.map((lot) => (
-              <LotCard
-                key={lot.id}
-                lot={lot}
-                onClick={() => navigate('/farmer/offers')}
-              />
+              <div key={lot.id} className="relative">
+                <LotCard
+                  lot={lot}
+                  onClick={() => navigate('/farmer/offers')}
+                />
+                {lot.status === 'active' && (
+                  <div className="px-4 mt-2 mb-2">
+                    <Button 
+                      variant="outline" 
+                      fullWidth 
+                      size="sm"
+                      onClick={() => navigate(`/farmer/net-realisation/${lot.id}`)}
+                    >
+                      ðŸ§® Net Realisation Calculator
+                    </Button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}

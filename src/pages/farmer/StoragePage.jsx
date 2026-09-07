@@ -4,7 +4,9 @@
 import Layout from '../../components/layout/Layout';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
-import { storageOptions } from '../../data/mockOrders';
+import { useStorage } from '../../hooks/useStorage';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 // Storage type colour mapping
 const typeColors = {
@@ -13,6 +15,11 @@ const typeColors = {
 };
 
 export default function StoragePage() {
+  const { data: storageOptions, loading, error } = useStorage();
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
+
   return (
     <Layout title="भंडारण / Storage" showBack>
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">

@@ -26,7 +26,7 @@ export function useMyLots(filters = {}) {
   const { user } = useAuth();
 
   const getMock = () => {
-    const farmerId = user?.id || 'f1';
+    const farmerId = user?._id || user?.id || 'f1';
     let result = lots.filter((l) => l.farmerId === farmerId);
     if (filters.status && filters.status !== 'all') {
       result = result.filter((l) => l.status === filters.status);
@@ -60,7 +60,7 @@ export function useMyLots(filters = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  return { data, lots: data, loading, error, refetch: loadData };
 }
 
 // ─── useLots ──────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ export function useMyLots(filters = {}) {
  * Fetch all active lots for the buyer marketplace.
  *
  * @param {Object} filters  { crop, search, minPrice, maxPrice, quality, sort }
- * @returns {{ data, loading, error, refetch }}
+ * @returns {{ data, lots, loading, error, refetch }}
  */
 export function useLots(filters = {}) {
   const getActiveMock = () => {
@@ -117,7 +117,7 @@ export function useLots(filters = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  return { data, lots: data, loading, error, refetch: loadData };
 }
 
 // ─── useCreateLot ─────────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ export function useCreateLot() {
     setError(null);
     try {
       const res = await api.post('/lots', formData);
-      return res.data.lot;
+      return res.data;
     } catch (err) {
       setError(err);
       return null;

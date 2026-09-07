@@ -22,7 +22,9 @@ export function formatPricePerUnit(price, unit = 'क्विंटल') {
  * Returns { text, colorClass }
  */
 export function formatPriceChange(change, changePercent) {
-  if (change === 0) return { text: 'कोई बदलाव नहीं', colorClass: 'text-gray-500' };
+  if (change == null || changePercent == null || change === 0) {
+    return { text: '...', colorClass: 'text-gray-500' };
+  }
   const sign = change > 0 ? '+' : '';
   return {
     text: `${sign}₹${Math.abs(change)} (${sign}${changePercent.toFixed(1)}%)`,

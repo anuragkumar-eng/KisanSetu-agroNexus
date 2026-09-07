@@ -60,5 +60,5 @@ export function useOrders(filters = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  return { data, orders: data, loading, error, refetch: loadData };
 }

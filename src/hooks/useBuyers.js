@@ -57,7 +57,7 @@ export function useBuyers(filters = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  return { data, buyers: data, loading, error, refetch: loadData };
 }
 
 // ─── useBuyerDetail ───────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ export function useBuyerDetail(id) {
     setLoading(true); setError(null);
     try {
       const res = await api.get(`/buyers/${id}`);
-      setData(res.data.buyer);
+      setData(res.data);
     } catch (err) {
       setError(err);
     } finally {
@@ -93,5 +93,5 @@ export function useBuyerDetail(id) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  return { data, buyer: data, loading, error, refetch: loadData };
 }

@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import LotCard from '../../components/farmer/LotCard';
 import EmptyState from '../../components/common/EmptyState';
-import { lots } from '../../data/mockLots';
-import { cropTypes } from '../../data/mockLots';
+import { useLots } from '../../hooks/useLots';
+import { useCropTypes } from '../../hooks/useConfig';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 export default function Marketplace() {
   const navigate = useNavigate();
@@ -13,7 +15,13 @@ export default function Marketplace() {
   const [selectedCrop, setSelectedCrop] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
 
-  const activeLots = lots.filter((l) => l.status === 'active');
+  const { lots: allLots, loading: lotsLoading, error: lotsError } = useLots();
+  const { data: cropTypes, loading: cropsLoading } = useCropTypes();
+
+  if (lotsLoading || cropsLoading) return <LoadingState />;
+  if (lotsError) return <ErrorState message={lotsError.message} />;
+
+  const activeLots = (allLots || []).filter((l) => l.status === 'active');
 
   const filtered = activeLots
     .filter((lot) => {

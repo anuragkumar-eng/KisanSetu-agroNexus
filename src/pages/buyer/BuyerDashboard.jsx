@@ -5,17 +5,25 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import LotCard from '../../components/farmer/LotCard';
 import { useAuth } from '../../context/AuthContext';
-import { lots } from '../../data/mockLots';
-import { buyerOffers } from '../../data/mockOffers';
-import { orders } from '../../data/mockOrders';
+import { useLots } from '../../hooks/useLots';
+import { useOffers } from '../../hooks/useOffers';
+import { useOrders } from '../../hooks/useOrders';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const activeLots = lots.filter((l) => l.status === 'active').slice(0, 3);
-  const pendingOffers = buyerOffers.filter((o) => o.status === 'pending');
-  const activeOrders = orders.filter((o) => o.status === 'in_transit');
+  const { lots: allLots, loading: lotsLoading } = useLots();
+  const { offers: allOffers, loading: offersLoading } = useOffers();
+  const { orders: allOrders, loading: ordersLoading } = useOrders();
+
+  if (lotsLoading || offersLoading || ordersLoading) return <LoadingState />;
+
+  const activeLots = (allLots || []).filter((l) => l.status === 'active').slice(0, 3);
+  const pendingOffers = (allOffers || []).filter((o) => o.status === 'pending');
+  const activeOrders = (allOrders || []).filter((o) => o.status === 'in_transit' || o.status === 'confirmed');
 
   return (
     <Layout>

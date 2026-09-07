@@ -1,10 +1,15 @@
 // Register page — simple registration form
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [role, setRole] = useState('farmer');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -12,12 +17,51 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [location, setLocation] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    // In real app: POST /api/auth/register
-    setSubmitted(true);
+    setErrorMsg('');
+    setLoading(true);
+
+    if (USE_MOCK) {
+      // Mock mode: just show success then redirect to login
+      setSubmitted(true);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        role,
+        phone,
+        location,
+        state: location.split(',')[1]?.trim() || 'Unknown',
+        district: location.split(',')[0]?.trim() || 'Unknown'
+      });
+      // Registration returns { success, data: { user, token } }
+      // Auto-login: store the token and user directly via AuthContext.login()
+      // Instead of calling login() (which makes a second network request),
+      // we manually trigger login with the credentials we just submitted.
+      // This avoids a redundant round-trip and handles the token storage.
+      const loggedInUser = await login(email, password);
+      if (loggedInUser) {
+        navigate(loggedInUser.role === 'buyer' ? '/buyer' : '/farmer', { replace: true });
+      } else {
+        // login() failed (shouldn't happen right after registration), fall back to login page
+        setSubmitted(true);
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
+
 
   if (submitted) {
     return (
@@ -139,7 +183,13 @@ export default function Register() {
             />
           </div>
 
-          <Button type="submit" variant="primary" size="lg" fullWidth>
+          {errorMsg && (
+            <div className="p-3 bg-red-50 text-red-700 text-sm rounded-xl">
+              {errorMsg}
+            </div>
+          )}
+
+          <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>
             रजिस्टर करें / Register
           </Button>
         </form>

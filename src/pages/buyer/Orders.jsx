@@ -4,10 +4,17 @@ import Card from '../../components/ui/Card';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/common/EmptyState';
 import OrderTimeline from '../../components/farmer/OrderTimeline';
-import { orders } from '../../data/mockOrders';
 import { formatRupees } from '../../utils/helpers';
+import { useOrders } from '../../hooks/useOrders';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 export default function Orders() {
+  const { orders, loading, error } = useOrders();
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
+
   return (
     <Layout title="ऑर्डर / Orders" showBack>
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">

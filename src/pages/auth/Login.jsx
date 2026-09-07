@@ -19,7 +19,8 @@ export default function Login() {
     setLoading(false);
     if (loggedInUser) {
       // Use the actual role from the authenticated user — never infer from email
-      navigate(loggedInUser.role === 'buyer' ? '/buyer' : '/farmer', { replace: true });
+      const userRole = (loggedInUser.role || '').toLowerCase();
+      navigate(userRole === 'buyer' ? '/buyer' : '/farmer', { replace: true });
     }
   }
 

@@ -29,7 +29,7 @@ export function useOffers(filters = {}) {
 
   const getMock = () => {
     if (isBuyer) return buyerOffers;
-    const farmerId = user?.id || 'f1';
+    const farmerId = user?._id || user?.id || 'f1';
     let result = offers.filter((o) => o.farmerId === farmerId);
     if (filters.status) result = result.filter((o) => o.status === filters.status);
     return result;
@@ -62,7 +62,15 @@ export function useOffers(filters = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  const actions = useOfferActions();
+
+  async function respondToOffer(offerId, action, payload = {}) {
+    if (action === 'accept') return actions.acceptOffer(offerId);
+    if (action === 'reject') return actions.rejectOffer(offerId, payload.reason);
+    if (action === 'counter') return actions.counterOffer(offerId, payload.counterPrice, payload.message);
+  }
+
+  return { data, offers: data, loading, error, refetch: loadData, respondToOffer };
 }
 
 // ─── useOfferActions ──────────────────────────────────────────────────────────

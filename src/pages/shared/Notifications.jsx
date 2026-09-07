@@ -2,13 +2,19 @@
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import EmptyState from '../../components/common/EmptyState';
-import { notifications } from '../../data/mockNotifications';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../hooks/useNotifications';
 import { timeAgo } from '../../utils/helpers';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 export default function Notifications() {
   const navigate = useNavigate();
   const { user, readNotifIds, markNotifRead } = useAuth();
+  const { data: notifications, loading, error } = useNotifications();
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
 
   // A notification is considered read if it was always read OR marked read this session
   function isRead(n) {

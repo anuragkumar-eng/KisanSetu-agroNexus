@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import Button from '../../components/ui/Button';
-import { cropTypes, qualityGrades } from '../../data/mockLots';
+import { useCropTypes, useQualityGrades } from '../../hooks/useConfig';
+import { useCreateLot } from '../../hooks/useLots';
+import LoadingState from '../../components/common/LoadingState';
 
 // Today's date string in YYYY-MM-DD format (for the date input min attribute)
 function todayStr() {
@@ -12,6 +14,9 @@ function todayStr() {
 
 export default function CreateLot() {
   const navigate = useNavigate();
+  const { data: cropTypes, loading: cropsLoading } = useCropTypes();
+  const { data: qualityGrades, loading: gradesLoading } = useQualityGrades();
+  const { createLot, creating, error } = useCreateLot();
   const [step, setStep] = useState(1); // 2-step form
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
@@ -29,14 +34,19 @@ export default function CreateLot() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    // In real app: POST /api/lots with the full form object below
-    // const payload = { ...form, createdAt: new Date().toISOString() };
-    setSubmitted(true);
+    try {
+      await createLot(form);
+      setSubmitted(true);
+    } catch (err) {
+      alert(err.message || 'Failed to create lot');
+    }
   }
 
-  const selectedCrop = cropTypes.find((c) => c.value === form.cropType);
+  if (cropsLoading || gradesLoading) return <LoadingState />;
+
+  const selectedCrop = (cropTypes || []).find((c) => c.value === form.cropType);
 
   if (submitted) {
     return (

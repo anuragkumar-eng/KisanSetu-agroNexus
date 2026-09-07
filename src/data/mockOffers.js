@@ -112,7 +112,7 @@ export const buyerOffers = [
     lotCropNameHi: 'गेहूँ',
     lotCropEmoji: '🌾',
     farmerName: 'Ramesh Kumar',
-    farmerLocation: 'Karnal, Haryana',
+    farmerLocation: 'Kanpur, Uttar Pradesh',
     offerPrice: 2280,
     quantity: 100,
     totalAmount: 228000,

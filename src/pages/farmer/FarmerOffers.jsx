@@ -4,36 +4,45 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import OfferCard from '../../components/farmer/OfferCard';
 import EmptyState from '../../components/common/EmptyState';
-import { offers as initialOffers } from '../../data/mockOffers';
+import { useOffers } from '../../hooks/useOffers';
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 const STATUS_TABS = [
   { key: 'all',       label: 'सभी' },
-  { key: 'pending',   label: '⏳ नए' },
+  { key: 'pending',   label: '⏳ नया' },
   { key: 'accepted',  label: '✅ स्वीकृत' },
-  { key: 'completed', label: '🤝 पूर्ण' },
+  { key: 'completed', label: '📦 पूर्ण' },
 ];
 
 export default function FarmerOffers() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
-  const [offerList, setOfferList] = useState(initialOffers.filter((o) => o.farmerId === 'f1'));
+  const { offers: offerList, loading, error, respondToOffer } = useOffers({ asRole: 'farmer' });
 
-  function handleAccept(offerId) {
-    setOfferList((prev) =>
-      prev.map((o) => (o.id === offerId ? { ...o, status: 'accepted' } : o))
-    );
+  async function handleAccept(offerId) {
+    try {
+      await respondToOffer(offerId, 'accept');
+    } catch (err) {
+      alert(err.message || 'Failed to accept offer');
+    }
   }
 
-  function handleReject(offerId) {
-    setOfferList((prev) =>
-      prev.map((o) => (o.id === offerId ? { ...o, status: 'rejected' } : o))
-    );
+  async function handleReject(offerId) {
+    try {
+      await respondToOffer(offerId, 'reject');
+    } catch (err) {
+      alert(err.message || 'Failed to reject offer');
+    }
   }
 
   const filtered =
     activeTab === 'all'
       ? offerList
       : offerList.filter((o) => o.status === activeTab);
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error.message} />;
 
   const pendingCount = offerList.filter((o) => o.status === 'pending').length;
 

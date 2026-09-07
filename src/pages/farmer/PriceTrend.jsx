@@ -3,18 +3,27 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import Button from '../../components/ui/Button';
 import { Sparkline, DayLabels } from '../../components/farmer/Sparkline';
-import { mandiPrices, priceTrends, priceRecommendations } from '../../data/mockMandi';
+import { useMandi, useMandiHistory } from '../../hooks/useMandi';
+import { priceRecommendations } from '../../data/mockMandi'; // Kept for AI advice
+import LoadingState from '../../components/common/LoadingState';
+import ErrorState from '../../components/common/ErrorState';
 
 export default function PriceTrend() {
   const { crop } = useParams();
   const navigate = useNavigate();
 
   const cropKey = crop?.toLowerCase();
-  const trendData = priceTrends[cropKey];
-  const priceData = mandiPrices.find(
+  
+  const { prices: mandiPrices, loading: pricesLoading, error: pricesError } = useMandi();
+  const { data: trendData, loading: trendLoading, error: trendError } = useMandiHistory(cropKey);
+  
+  const priceData = (mandiPrices || []).find(
     (m) => m.cropName.toLowerCase() === cropKey
   );
   const rec = priceRecommendations[cropKey];
+
+  if (pricesLoading || trendLoading) return <LoadingState />;
+  if (pricesError || trendError) return <ErrorState message={pricesError?.message || trendError?.message} />;
 
   if (!priceData) {
     return (
@@ -140,26 +149,46 @@ export default function PriceTrend() {
           </Button>
         </div>
 
-        {/* Nearby markets table */}
+        {/* Real markets available for this crop */}
         <div className="bg-white rounded-2xl shadow-[0_1px_6px_rgba(0,0,0,0.08)] p-4">
-          <p className="font-semibold text-gray-700 mb-3">🏪 नज़दीकी मंडियाँ</p>
-          <div className="space-y-2">
-            {[
-              { name: priceData.mandiHi, dist: '0 km', price: priceData.price, best: true },
-              { name: 'Panipat Mandi',   dist: '22 km', price: priceData.price - 40 },
-              { name: 'Rohtak Mandi',    dist: '38 km', price: priceData.price - 80 },
-            ].map((m) => (
-              <div key={m.name} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{m.name}</p>
-                  <p className="text-xs text-gray-500">📍 {m.dist}</p>
+          <p className="font-semibold text-gray-700 mb-3">🏪 उपलब्ध मंडियां / Available Markets</p>
+          <div className="space-y-4">
+            {(mandiPrices || [])
+              .filter(m => m.cropName.toLowerCase() === cropKey)
+              .sort((a, b) => (b.modalPrice || b.price) - (a.modalPrice || a.price))
+              .map((m, idx) => (
+                <div key={m.id || idx} className="py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-bold text-gray-800">{m.mandiHi || m.mandi || m.market}</h4>
+                      <p className="text-xs text-gray-500">{new Date(m.date || m.updatedAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-green-700 text-lg">₹{(m.modalPrice || m.price).toLocaleString('en-IN')}</p>
+                      <p className="text-[10px] text-gray-400">/{m.unitHi || m.unit || 'Quintal'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Min Price:</span>
+                      <span className="font-medium">₹{m.minPrice || m.price}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Variety:</span>
+                      <span className="font-medium">{m.variety || 'Common'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Max Price:</span>
+                      <span className="font-medium">₹{m.maxPrice || m.price}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Grade:</span>
+                      <span className="font-medium">{m.grade || 'FAQ'}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-800">₹{m.price.toLocaleString('en-IN')}</p>
-                  {m.best && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">सर्वश्रेष्ठ</span>}
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       </div>

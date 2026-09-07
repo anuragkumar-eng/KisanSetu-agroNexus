@@ -51,7 +51,7 @@ export function useMandi(params = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { data, loading, error, refetch: loadData };
+  return { data, prices: data, loading, error, refetch: loadData };
 }
 
 // ─── useMandiHistory ──────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export function useMandiHistory(cropKey, days = 14) {
     try {
       // TODO (Phase 5): resolve cropKey → mandiId first, then fetch history.
       // Placeholder path until mandiId is available in the UI:
-      const res = await api.get(`/mandi/crop/${cropNorm}/history?days=${days}`);
+      const res = await api.get(`/mandi/crop/${encodeURIComponent(cropNorm)}/history?days=${days}`);
       setData(res.data?.history ?? []);
     } catch (err) {
       setError(err);

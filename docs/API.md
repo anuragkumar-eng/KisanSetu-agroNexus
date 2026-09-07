@@ -923,10 +923,13 @@ Post a new buying requirement.
 
 #### `GET /api/requirements`
 
-Get buyer requirements visible to farmers (browsable demand board).
+Get buyer requirements. Behavior is role-aware:
+- `farmer`, `fpo`, `admin`: Get all active buyer requirements visible to farmers (browsable demand board).
+- `buyer`: Get only their own active requirements.
 
-**Auth required:** ✅  
-**Role required:** `farmer` or `fpo`
+**Auth required:** Yes  
+**Role required:** Any authenticated role
+
 
 **Query Parameters:** `crop`, `state`, `minQty`, `page`, `limit`
 
