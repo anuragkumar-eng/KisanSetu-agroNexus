@@ -140,14 +140,16 @@ export function useCreateLot() {
   async function createLot(formData) {
     if (USE_MOCK) {
       // Simulate a successful backend response
-      return {
+      const newLot = {
         _id:        `lot_mock_${Date.now()}`,
-        farmerId:   'f1',
+        farmerId:   user?._id || user?.id || 'f1',
         status:     'active',
         offerCount: 0,
         createdAt:  new Date().toISOString(),
         ...formData,
       };
+      lots.unshift(newLot);
+      return newLot;
     }
     setLoading(true);
     setError(null);
@@ -156,7 +158,7 @@ export function useCreateLot() {
       return res.data;
     } catch (err) {
       setError(err);
-      return null;
+      throw err; // MUST THROW so the UI knows it failed
     } finally {
       setLoading(false);
     }
