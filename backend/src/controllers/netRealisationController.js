@@ -24,8 +24,9 @@ exports.getNetRealisationForLot = async (req, res) => {
     const quantity = lot.quantity || 1;
 
     // 1. Fetch relevant Mandi Prices for this crop
-    // Use recent prices (in reality, maybe sort by date). We just fetch distinct markets for this crop.
-    const mandis = await MandiPrice.find({ cropName: new RegExp('^' + lot.cropName + '$', 'i') }).sort({ date: -1 }).lean();
+    // Escape special regex characters in the crop name to support crops like "Bajra(Pearl Millet/Cumbu)"
+    const escapedCropName = lot.cropName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const mandis = await MandiPrice.find({ cropName: new RegExp('^' + escapedCropName + '$', 'i') }).sort({ date: -1 }).lean();
     
     // Deduplicate by market to only get the latest price for each market
     const uniqueMandisMap = new Map();

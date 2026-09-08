@@ -87,7 +87,7 @@ export default function MyLots() {
         ) : (
           <div className="space-y-4">
             {filtered.map((lot) => (
-              <div key={lot.id} className="relative">
+              <div key={lot._id || lot.id} className="relative">
                 <LotCard
                   lot={lot}
                   onClick={() => navigate('/farmer/offers')}
@@ -98,7 +98,7 @@ export default function MyLots() {
                       variant="outline" 
                       fullWidth 
                       size="sm"
-                      onClick={() => navigate(`/farmer/net-realisation/${lot.id}`)}
+                      onClick={() => navigate(`/farmer/net-realisation/${lot._id || lot.id}`)}
                     >
                       ðŸ§® Net Realisation Calculator
                     </Button>
