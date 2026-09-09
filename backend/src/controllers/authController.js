@@ -2,16 +2,62 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { generateToken } = require('../utils/jwt');
 
+const https = require('https');
+
+// Helper to fetch phone.email JSON
+const fetchPhoneEmailData = (url) => {
+  return new Promise((resolve, reject) => {
+    console.log('[fetchPhoneEmailData] Fetching URL:', url);
+    if (!url || !url.startsWith('https://')) {
+      return reject(new Error('Invalid phone.email URL format: ' + url));
+    }
+    if (!url.includes('phone.email')) {
+      return reject(new Error('URL does not belong to phone.email: ' + url));
+    }
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('Failed to parse phone.email response'));
+        }
+      });
+    }).on('error', (e) => reject(new Error('Failed to fetch phone.email data')));
+  });
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { email, password, role, name, nameHi, phone, location, state, district } = req.body;
+    const { email, password, role, name, nameHi, phone, user_json_url, location, state, district } = req.body;
 
     // Validate required fields
     if (!email || !password || !role || !name) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
+    }
+
+    let verifiedPhone = phone;
+
+    // If using Phone.email verification flow
+    if (user_json_url) {
+      try {
+        const phoneData = await fetchPhoneEmailData(user_json_url);
+        if (phoneData && phoneData.user_phone_number) {
+          verifiedPhone = `${phoneData.user_country_code || '+91'} ${phoneData.user_phone_number}`;
+        } else {
+          return res.status(400).json({ success: false, message: 'Phone verification failed' });
+        }
+      } catch (err) {
+        return res.status(400).json({ success: false, message: 'Invalid phone verification URL' });
+      }
+    }
+
+    if (!verifiedPhone) {
+      return res.status(400).json({ success: false, message: 'Verified phone number is required' });
     }
 
     // Check if user already exists
@@ -31,7 +77,7 @@ const registerUser = async (req, res) => {
       role,
       name,
       nameHi,
-      phone,
+      phone: verifiedPhone,
       location,
       state,
       district
@@ -130,9 +176,61 @@ const logoutUser = async (req, res) => {
   }
 };
 
+// @desc    Authenticate user using Phone.email JSON URL
+// @route   POST /api/auth/phone-login
+// @access  Public
+const phoneLogin = async (req, res) => {
+  try {
+    const { user_json_url } = req.body;
+    console.log('[phoneLogin] Received user_json_url:', user_json_url);
+    if (!user_json_url) {
+      return res.status(400).json({ success: false, message: 'Please provide user_json_url' });
+    }
+
+    let verifiedPhone;
+    try {
+      const phoneData = await fetchPhoneEmailData(user_json_url);
+      console.log('[phoneLogin] Fetched phoneData:', phoneData);
+      if (phoneData && phoneData.user_phone_number) {
+        verifiedPhone = String(phoneData.user_phone_number).replace(/\D/g, ''); // Extract just digits
+      } else {
+        return res.status(400).json({ success: false, message: 'Phone verification failed' });
+      }
+    } catch (err) {
+      console.error('[phoneLogin] fetchPhoneEmailData error:', err);
+      return res.status(400).json({ success: false, message: 'Invalid phone verification URL: ' + err.message });
+    }
+
+    // Match last 10 digits allowing optional spaces/dashes (e.g. +91 98765 43210)
+    const digits = verifiedPhone.slice(-10).split('');
+    const regexStr = digits.join('\\s*\\-?\\s*') + '$';
+    const phoneRegex = new RegExp(regexStr);
+
+    // Find user by phone
+    const user = await User.findOne({ phone: phoneRegex });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found. Please register first.' });
+    }
+
+    // Generate token
+    const token = generateToken(user._id, user.role);
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        token
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  phoneLogin,
   getMe,
   logoutUser
 };

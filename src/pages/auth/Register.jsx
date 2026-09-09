@@ -1,32 +1,58 @@
 // Register page — simple registration form
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 import Button from '../../components/ui/Button';
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
 export default function Register() {
-  const navigate = useNavigate();
   const { login } = useAuth();
-  const [role, setRole] = useState('farmer');
+  const navigate = useNavigate();
+
+  const [role, setRole] = useState('farmer'); // 'farmer' or 'buyer'
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [location, setLocation] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [password, setPassword] = useState('');
+  const [userJsonUrl, setUserJsonUrl] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    // Setup the global listener for Phone.email
+    window.phoneEmailListener = (userObj) => {
+      setUserJsonUrl(userObj.user_json_url);
+    };
+    
+    // Add the script dynamically
+    const script = document.createElement('script');
+    script.src = "https://www.phone.email/sign_in_button_v1.js";
+    script.async = true;
+    document.querySelector('.pe_signin_button')?.appendChild(script);
+
+    return () => {
+      delete window.phoneEmailListener;
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setErrorMsg('');
     setLoading(true);
+    setErrorMsg('');
+
+    if (!userJsonUrl && !USE_MOCK) {
+      setErrorMsg('कृपया अपना फ़ोन नंबर वेरीफाई करें। / Please verify your phone number.');
+      setLoading(false);
+      return;
+    }
 
     if (USE_MOCK) {
-      // Mock mode: just show success then redirect to login
       setSubmitted(true);
       setLoading(false);
       return;
@@ -38,21 +64,16 @@ export default function Register() {
         email,
         password,
         role,
-        phone,
+        phone, // Sent as fallback but backend uses user_json_url
+        user_json_url: userJsonUrl,
         location,
         state: location.split(',')[1]?.trim() || 'Unknown',
         district: location.split(',')[0]?.trim() || 'Unknown'
       });
-      // Registration returns { success, data: { user, token } }
-      // Auto-login: store the token and user directly via AuthContext.login()
-      // Instead of calling login() (which makes a second network request),
-      // we manually trigger login with the credentials we just submitted.
-      // This avoids a redundant round-trip and handles the token storage.
       const loggedInUser = await login(email, password);
       if (loggedInUser) {
         navigate(loggedInUser.role === 'buyer' ? '/buyer' : '/farmer', { replace: true });
       } else {
-        // login() failed (shouldn't happen right after registration), fall back to login page
         setSubmitted(true);
       }
     } catch (err) {
@@ -62,7 +83,6 @@ export default function Register() {
     }
   }
 
-
   if (submitted) {
     return (
       <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center px-4 text-center">
@@ -70,7 +90,7 @@ export default function Register() {
         <h2 className="text-2xl font-bold text-green-700 mb-2">रजिस्ट्रेशन सफल!</h2>
         <p className="text-gray-600 mb-2">Registration Successful!</p>
         <p className="text-sm text-gray-500 mb-6 max-w-xs">
-          अभी Demo Account से लॉगिन करें। असली खाता जल्द उपलब्ध होगा।
+          अब आप लॉगिन कर सकते हैं।
         </p>
         <Button variant="primary" size="lg" onClick={() => navigate('/login')}>
           लॉगिन करें
@@ -84,7 +104,7 @@ export default function Register() {
       <div className="text-center mb-6">
         <div className="text-5xl mb-2">🌾</div>
         <h1 className="text-2xl font-bold text-green-700">KisanSetu</h1>
-        <p className="text-gray-500 text-sm">नया खाता बनाएँ / Create Account</p>
+        <p className="text-gray-500 text-sm">नया खाता बनाएं / Create Account</p>
       </div>
 
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] p-6">
@@ -136,14 +156,16 @@ export default function Register() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">मोबाइल नंबर / Mobile</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              placeholder="+91 98765 43210"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base"
-            />
+            {userJsonUrl ? (
+              <div className="w-full px-4 py-3 rounded-xl border border-green-200 bg-green-50 flex items-center gap-2">
+                <span className="text-green-600">✅</span>
+                <span className="text-green-700 font-medium">फ़ोन नंबर वेरीफाई हो गया / Verified</span>
+              </div>
+            ) : (
+              <div className="flex justify-center mt-2">
+                <div className="pe_signin_button" data-client-id="18281796168547548473"></div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -189,7 +211,7 @@ export default function Register() {
             </div>
           )}
 
-          <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>
+          <Button type="submit" variant="primary" size="lg" fullWidth loading={loading} disabled={!userJsonUrl && !USE_MOCK}>
             रजिस्टर करें / Register
           </Button>
         </form>

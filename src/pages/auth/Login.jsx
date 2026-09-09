@@ -1,15 +1,39 @@
-// Login page — role-based demo login
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 
 export default function Login() {
-  const { login, error, setError } = useAuth();
+  const { login, loginWithPhone, error, setError } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Setup the global listener for Phone.email
+    window.phoneEmailListener = async (userObj) => {
+      setLoading(true);
+      const user_json_url = userObj.user_json_url;
+      const loggedInUser = await loginWithPhone(user_json_url);
+      setLoading(false);
+      if (loggedInUser) {
+        const userRole = (loggedInUser.role || '').toLowerCase();
+        navigate(userRole === 'buyer' ? '/buyer' : '/farmer', { replace: true });
+      }
+    };
+    
+    // Add the script dynamically
+    const script = document.createElement('script');
+    script.src = "https://www.phone.email/sign_in_button_v1.js";
+    script.async = true;
+    document.querySelector('.pe_signin_button')?.appendChild(script);
+
+    return () => {
+      delete window.phoneEmailListener;
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+  }, [loginWithPhone, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -47,6 +71,17 @@ export default function Login() {
       {/* Card */}
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.10)] p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">लॉगिन करें / Login</h2>
+
+        {/* Phone.email Sign In */}
+        <div className="mb-6 flex justify-center">
+          <div className="pe_signin_button" data-client-id="18281796168547548473"></div>
+        </div>
+        
+        <div className="flex items-center gap-2 mb-6">
+          <div className="h-px bg-gray-200 flex-1"></div>
+          <span className="text-xs text-gray-400 font-medium uppercase">OR</span>
+          <div className="h-px bg-gray-200 flex-1"></div>
+        </div>
 
         {/* Demo quick login */}
         <div className="mb-6 p-3 bg-green-50 rounded-2xl space-y-2">

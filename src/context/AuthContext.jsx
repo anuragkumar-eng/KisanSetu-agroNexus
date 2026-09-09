@@ -196,6 +196,47 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ─── loginWithPhone() ──────────────────────────────────────────────────────────
+  /**
+   * Authenticate the user using Phone.email JSON URL.
+   *
+   * @param {string} user_json_url
+   * @returns {Object|false} User object on success, false on failure.
+   */
+  async function loginWithPhone(user_json_url) {
+    setError('');
+
+    if (USE_MOCK) {
+      setError('Phone login not supported in demo mode.');
+      return false;
+    }
+
+    try {
+      const res = await api.post('/auth/phone-login', { user_json_url });
+      
+      const payload = res.data || res;
+      const apiUser = payload.user || payload;
+      const jwt = payload.token;
+
+      setUser(apiUser);
+      setToken(jwt);
+      localStorage.setItem('kisansetu_user',  JSON.stringify(apiUser));
+      localStorage.setItem('kisansetu_token', jwt);
+      return apiUser;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.isUnauthorized) {
+          setError('यूज़र नहीं मिला। कृपया पहले रजिस्टर करें। / User not found.');
+        } else {
+          setError(err.message || 'लॉगिन विफल। / Login failed.');
+        }
+      } else {
+        setError('लॉगिन विफल। / Login failed.');
+      }
+      return false;
+    }
+  }
+
   // ── logout() ────────────────────────────────────────────────────────────────
   function logout() {
     setUser(null);
@@ -224,6 +265,7 @@ export function AuthProvider({ children }) {
         user,
         token,
         login,
+        loginWithPhone,
         logout,
         error,
         setError,
