@@ -46,7 +46,7 @@ export default function BuyerOffers() {
         ) : (
           <div className="space-y-3">
             {buyerOffers.map((offer) => (
-              <div key={offer.id}>
+              <div key={offer._id || offer.id}>
                 {/* Reusable OfferCard in buyer view mode */}
                 <OfferCard
                   offer={offer}

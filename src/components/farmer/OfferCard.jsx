@@ -94,7 +94,7 @@ export default function OfferCard({
             variant="primary"
             size="sm"
             fullWidth
-            onClick={() => onAccept?.(offer.id)}
+            onClick={() => onAccept?.(offer._id || offer.id)}
             icon="✅"
           >
             स्वीकार करें
@@ -103,7 +103,7 @@ export default function OfferCard({
             variant="danger"
             size="sm"
             fullWidth
-            onClick={() => onReject?.(offer.id)}
+            onClick={() => onReject?.(offer._id || offer.id)}
             icon="❌"
           >
             अस्वीकार

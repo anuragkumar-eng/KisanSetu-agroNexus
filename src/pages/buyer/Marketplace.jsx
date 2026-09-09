@@ -108,10 +108,10 @@ export default function Marketplace() {
           <div className="space-y-3">
             {filtered.map((lot) => (
               <LotCard
-                key={lot.id}
+                key={lot._id || lot.id}
                 lot={lot}
                 showFarmer
-                onClick={() => navigate(`/buyer/lot/${lot.id}`)}
+                onClick={() => navigate(`/buyer/lot/${lot._id || lot.id}`)}
               />
             ))}
           </div>

@@ -50,7 +50,61 @@ export function useOrders(filters = {}) {
     try {
       const qs = new URLSearchParams(filters).toString();
       const res = await api.get(`/orders${qs ? `?${qs}` : ''}`);
-      setData(res.data);
+      
+      const STATUS_ORDER = [
+        'ORDER_CONFIRMED', 'TRANSPORT_PENDING', 'PICKED_UP', 
+        'IN_TRANSIT', 'DELIVERED', 'PAYMENT_PENDING', 'PAYMENT_RECEIVED'
+      ];
+      
+      const STATUS_LABELS = [
+        { key: 'ORDER_CONFIRMED', labelHi: 'ऑर्डर कंफर्म' },
+        { key: 'PICKED_UP', labelHi: 'उठाया गया' },
+        { key: 'IN_TRANSIT', labelHi: 'रास्ते में' },
+        { key: 'DELIVERED', labelHi: 'पहुंच गया' },
+        { key: 'PAYMENT_RECEIVED', labelHi: 'भुगतान हो गया' }
+      ];
+
+      const statusMap = {
+        'ORDER_CONFIRMED': 'कंफर्म',
+        'TRANSPORT_PENDING': 'परिवहन बाकी',
+        'PICKED_UP': 'उठाया गया',
+        'IN_TRANSIT': 'रास्ते में',
+        'DELIVERED': 'पहुंच गया',
+        'PAYMENT_PENDING': 'भुगतान बाकी',
+        'PAYMENT_RECEIVED': 'भुगतान हो गया'
+      };
+
+      const normalized = (res.data || []).map((order) => {
+        if (order.steps) return order;
+        
+        const orderStatusIndex = Math.max(0, STATUS_ORDER.indexOf(order.status));
+        
+        const steps = STATUS_LABELS.map((s) => {
+          const stepIndex = STATUS_ORDER.indexOf(s.key);
+          return {
+            labelHi: s.labelHi,
+            done: orderStatusIndex >= stepIndex,
+            date: orderStatusIndex >= stepIndex ? order.updatedAt : null 
+          };
+        });
+
+        const paymentStatus = order.status === 'PAYMENT_RECEIVED' ? 'paid' : 'pending';
+        const paymentStatusHi = paymentStatus === 'paid' ? 'भुगतान हो गया' : 'बाकी';
+
+        return {
+          ...order,
+          id: order._id || order.id,
+          farmerName: order.farmer?.name || order.farmerName || 'Unknown Farmer',
+          farmerLocation: order.farmer?.location || order.farmerLocation || 'Unknown Location',
+          buyerName: order.buyer?.name || order.buyerName || 'Unknown Buyer',
+          statusHi: statusMap[order.status] || order.status,
+          paymentStatus,
+          paymentStatusHi,
+          steps
+        };
+      });
+
+      setData(normalized);
     } catch (err) {
       setError(err);
     } finally {

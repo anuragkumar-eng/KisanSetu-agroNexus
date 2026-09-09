@@ -13,9 +13,17 @@ const createOffer = async (req, res) => {
       return res.status(400).json({ success: false, message: 'lotId, offerPrice, and quantity are required' });
     }
 
+    if (offerPrice <= 0 || quantity <= 0) {
+      return res.status(400).json({ success: false, message: 'Offer price and quantity must be greater than zero' });
+    }
+
     const lot = await Lot.findById(lotId);
     if (!lot) {
       return res.status(404).json({ success: false, message: 'Lot not found' });
+    }
+
+    if (lot.farmer.toString() === req.user._id.toString()) {
+      return res.status(400).json({ success: false, message: 'You cannot make an offer on your own lot' });
     }
 
     if (lot.status !== 'active') {

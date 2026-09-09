@@ -76,7 +76,7 @@ export default function BuyerDashboard() {
               <button onClick={() => navigate('/buyer/orders')} className="text-blue-600 text-xs font-semibold hover:underline">सभी →</button>
             </div>
             {activeOrders.map((order) => (
-              <Card key={order.id} onClick={() => navigate('/buyer/orders')} className="flex items-center gap-3">
+              <Card key={order._id || order.id} onClick={() => navigate('/buyer/orders')} className="flex items-center gap-3">
                 <span className="text-2xl">{order.cropEmoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-800 text-sm">{order.cropNameHi} — {order.farmerName}</p>
@@ -101,10 +101,10 @@ export default function BuyerDashboard() {
           <div className="space-y-2">
             {activeLots.map((lot) => (
               <LotCard
-                key={lot.id}
+                key={lot._id || lot.id}
                 lot={lot}
                 showFarmer
-                onClick={() => navigate(`/buyer/lot/${lot.id}`)}
+                onClick={() => navigate(`/buyer/lot/${lot._id || lot.id}`)}
               />
             ))}
           </div>

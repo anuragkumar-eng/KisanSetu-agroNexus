@@ -88,7 +88,7 @@ export default function FarmerOffers() {
           <div className="space-y-3">
             {filtered.map((offer) => (
               <OfferCard
-                key={offer.id}
+                key={offer._id || offer.id}
                 offer={offer}
                 onAccept={handleAccept}
                 onReject={handleReject}
