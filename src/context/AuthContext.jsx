@@ -237,7 +237,47 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ── logout() ────────────────────────────────────────────────────────────────
+  // ─── Email OTP Methods ──────────────────────────────────────────────────────────
+  async function sendEmailOtp(email) {
+    try {
+      const res = await api.post('/auth/email-otp/send', { email });
+      return { success: true, message: res.data?.message || res.message || 'OTP sent' };
+    } catch (err) {
+      return { success: false, message: err.message || 'Failed to send OTP' };
+    }
+  }
+
+  async function verifyEmailOtp(email, otp) {
+    setError('');
+
+    if (USE_MOCK) {
+      setError('Email OTP login not supported in demo mode.');
+      return false;
+    }
+
+    try {
+      const res = await api.post('/auth/email-otp/verify', { email, otp });
+      
+      const payload = res.data || res;
+      const apiUser = payload.user || payload;
+      const jwt = payload.token;
+
+      setUser(apiUser);
+      setToken(jwt);
+      localStorage.setItem('kisansetu_user',  JSON.stringify(apiUser));
+      localStorage.setItem('kisansetu_token', jwt);
+      return apiUser;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message || 'Invalid OTP.');
+      } else {
+        setError('Invalid OTP.');
+      }
+      return false;
+    }
+  }
+
+  // ─── logout() ────────────────────────────────────────────────────────────────
   function logout() {
     setUser(null);
     setToken(null);
@@ -266,6 +306,8 @@ export function AuthProvider({ children }) {
         token,
         login,
         loginWithPhone,
+        sendEmailOtp,
+        verifyEmailOtp,
         logout,
         error,
         setError,

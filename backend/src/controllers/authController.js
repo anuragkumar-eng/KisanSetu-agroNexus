@@ -1,6 +1,9 @@
 const User = require('../models/User');
+const Otp = require('../models/Otp');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { generateToken } = require('../utils/jwt');
+const { sendEmailOTP } = require('../utils/mailer');
 
 const https = require('https');
 
@@ -227,10 +230,92 @@ const phoneLogin = async (req, res) => {
   }
 };
 
+// @desc    Send Email OTP
+// @route   POST /api/auth/email-otp/send
+// @access  Public
+const sendEmailOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Please provide email' });
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Generate 6 digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    
+    // Hash OTP
+    const salt = await bcrypt.genSalt(10);
+    const otpHash = await bcrypt.hash(otp, salt);
+
+    // Delete existing OTPs for this email to prevent spam/abuse
+    await Otp.deleteMany({ email });
+
+    // Save to DB (expires in 10 minutes)
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await Otp.create({ email, otpHash, expiresAt });
+
+    // Send email
+    await sendEmailOTP(email, otp);
+
+    res.json({ success: true, message: 'OTP sent successfully to email' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Verify Email OTP
+// @route   POST /api/auth/email-otp/verify
+// @access  Public
+const verifyEmailOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ success: false, message: 'Please provide email and OTP' });
+
+    const otpRecord = await Otp.findOne({ email });
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'OTP expired or not requested' });
+    }
+
+    if (otpRecord.attempts >= 3) {
+      await Otp.deleteOne({ _id: otpRecord._id });
+      return res.status(400).json({ success: false, message: 'Too many failed attempts. Please request a new OTP.' });
+    }
+
+    const isMatch = await bcrypt.compare(otp, otpRecord.otpHash);
+    if (!isMatch) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    // OTP matched! Delete it.
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    // Find User
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Generate token
+    const token = generateToken(user._id, user.role);
+
+    res.json({ success: true, data: { user, token } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   phoneLogin,
+  sendEmailOtp,
+  verifyEmailOtp,
   getMe,
   logoutUser
 };

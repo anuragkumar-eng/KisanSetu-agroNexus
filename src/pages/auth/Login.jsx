@@ -4,11 +4,17 @@ import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 
 export default function Login() {
-  const { login, loginWithPhone, error, setError } = useAuth();
+  const { login, loginWithPhone, sendEmailOtp, verifyEmailOtp, error, setError } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Email OTP States
+  const [authMode, setAuthMode] = useState('password'); // 'password' or 'email-otp'
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSuccessMsg, setOtpSuccessMsg] = useState('');
 
   useEffect(() => {
     // Setup the global listener for Phone.email
@@ -35,7 +41,7 @@ export default function Login() {
     };
   }, [loginWithPhone, navigate]);
 
-  async function handleSubmit(e) {
+  async function handlePasswordSubmit(e) {
     e.preventDefault();
     setLoading(true);
     // login() is async — works for both mock demo login and real API login
@@ -48,8 +54,39 @@ export default function Login() {
     }
   }
 
+  async function handleSendOtp(e) {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setError('');
+    setOtpSuccessMsg('');
+    const res = await sendEmailOtp(email.trim());
+    setLoading(false);
+    if (res.success) {
+      setOtpSent(true);
+      setOtpSuccessMsg(res.message || 'OTP Sent!');
+    } else {
+      setError(res.message);
+    }
+  }
+
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
+    if (!otp) return;
+    setLoading(true);
+    setError('');
+    setOtpSuccessMsg('');
+    const loggedInUser = await verifyEmailOtp(email.trim(), otp.trim());
+    setLoading(false);
+    if (loggedInUser) {
+      const userRole = (loggedInUser.role || '').toLowerCase();
+      navigate(userRole === 'buyer' ? '/buyer' : '/farmer', { replace: true });
+    }
+  }
+
   function fillDemo(role) {
     setError('');
+    setAuthMode('password');
     if (role === 'farmer') {
       setEmail('farmer@demo.com');
       setPassword('1234');
@@ -83,32 +120,52 @@ export default function Login() {
           <div className="h-px bg-gray-200 flex-1"></div>
         </div>
 
-        {/* Demo quick login */}
-        <div className="mb-6 p-3 bg-green-50 rounded-2xl space-y-2">
-          <p className="text-xs text-gray-500 font-medium text-center mb-2">⚡ Demo — एक क्लिक में लॉगिन</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => fillDemo('farmer')}
-              className="flex flex-col items-center gap-1 p-2.5 bg-white rounded-xl border-2 border-green-200 hover:border-green-500 hover:bg-green-50 transition-colors cursor-pointer"
-            >
-              <span className="text-2xl">👨‍🌾</span>
-              <span className="text-xs font-semibold text-green-700">किसान</span>
-              <span className="text-[10px] text-gray-400">Farmer</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemo('buyer')}
-              className="flex flex-col items-center gap-1 p-2.5 bg-white rounded-xl border-2 border-blue-200 hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer"
-            >
-              <span className="text-2xl">👨‍💼</span>
-              <span className="text-xs font-semibold text-blue-700">खरीदार</span>
-              <span className="text-[10px] text-gray-400">Buyer</span>
-            </button>
-          </div>
+        {/* Auth Mode Tabs */}
+        <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-xl">
+          <button
+            type="button"
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${authMode === 'password' ? 'bg-white shadow text-green-700' : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => { setAuthMode('password'); setError(''); setOtpSuccessMsg(''); }}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${authMode === 'email-otp' ? 'bg-white shadow text-green-700' : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => { setAuthMode('email-otp'); setError(''); }}
+          >
+            Email OTP
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Demo quick login */}
+        {authMode === 'password' && (
+          <div className="mb-6 p-3 bg-green-50 rounded-2xl space-y-2">
+            <p className="text-xs text-gray-500 font-medium text-center mb-2">⚡ Demo — एक क्लिक में लॉगिन</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => fillDemo('farmer')}
+                className="flex flex-col items-center gap-1 p-2.5 bg-white rounded-xl border-2 border-green-200 hover:border-green-500 hover:bg-green-50 transition-colors cursor-pointer"
+              >
+                <span className="text-2xl">👨‍🌾</span>
+                <span className="text-xs font-semibold text-green-700">किसान</span>
+                <span className="text-[10px] text-gray-400">Farmer</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemo('buyer')}
+                className="flex flex-col items-center gap-1 p-2.5 bg-white rounded-xl border-2 border-blue-200 hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer"
+              >
+                <span className="text-2xl">👨‍💼</span>
+                <span className="text-xs font-semibold text-blue-700">खरीदार</span>
+                <span className="text-[10px] text-gray-400">Buyer</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={authMode === 'password' ? handlePasswordSubmit : (otpSent ? handleVerifyOtp : handleSendOtp)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               ईमेल / Email
@@ -118,28 +175,58 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={authMode === 'email-otp' && otpSent}
               placeholder="farmer@demo.com"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base transition-colors"
+              className={`w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base transition-colors ${authMode === 'email-otp' && otpSent ? 'bg-gray-100 text-gray-500' : ''}`}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              पासवर्ड / Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base transition-colors"
-            />
-          </div>
+          {authMode === 'password' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                पासवर्ड / Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base transition-colors"
+              />
+            </div>
+          )}
+
+          {authMode === 'email-otp' && otpSent && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                OTP (One Time Password)
+              </label>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                required
+                placeholder="123456"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-base transition-colors text-center tracking-widest font-mono"
+              />
+              <div className="flex justify-end mt-2">
+                <button type="button" onClick={handleSendOtp} className="text-xs text-green-600 font-medium hover:underline">
+                  Resend OTP
+                </button>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 text-red-600 text-sm rounded-xl px-4 py-2 border border-red-200">
               ⚠️ {error}
+            </div>
+          )}
+
+          {otpSuccessMsg && (
+            <div className="bg-green-50 text-green-700 text-sm rounded-xl px-4 py-2 border border-green-200">
+              ✅ {otpSuccessMsg}
             </div>
           )}
 
@@ -150,7 +237,7 @@ export default function Login() {
             fullWidth
             loading={loading}
           >
-            लॉगिन करें / Login
+            {authMode === 'password' ? 'लॉगिन करें / Login' : (otpSent ? 'वेरीफाई करें / Verify OTP' : 'OTP भेजें / Send OTP')}
           </Button>
         </form>
 
